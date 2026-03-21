@@ -849,10 +849,10 @@ var DEF={
 var S;
 // S starts empty — Firebase is the source of truth
 // localStorage is only a fast-load cache
-S = {...DEF};
+S = Object.assign({}, DEF);
 try {
   var cached = localStorage.getItem('vw5');
-  if (cached) S = {...DEF, ...JSON.parse(cached)};
+  if (cached) S = Object.assign({}, DEF, JSON.parse(cached));
 } catch(e) {}
 
 const sv = () => {
@@ -1101,12 +1101,12 @@ if(S.lastReset!==TODAY_K){
   var custA=((S.tasks && S.tasks.afternoon)||[]).filter(t=>t.id.startsWith('ct'));
   var custE=((S.tasks && S.tasks.evening)||[]).filter(t=>t.id.startsWith('ct'));
   S.tasks={
-    morning:[...JSON.parse(JSON.stringify(tpl.morning)),...custM.map(t=>({...t,done:false}))],
-    afternoon:[...JSON.parse(JSON.stringify(tpl.afternoon)),...custA.map(t=>({...t,done:false}))],
-    evening:[...JSON.parse(JSON.stringify(tpl.evening)),...custE.map(t=>({...t,done:false}))],
+    morning:JSON.parse(JSON.stringify(tpl.morning)).concat(custM.map(function(t){var r=Object.assign({},t);r.done=false;return r;})),
+    afternoon:JSON.parse(JSON.stringify(tpl.afternoon)).concat(custA.map(function(t){var r=Object.assign({},t);r.done=false;return r;})),
+    evening:JSON.parse(JSON.stringify(tpl.evening)).concat(custE.map(function(t){var r=Object.assign({},t);r.done=false;return r;})),
   };
-  S.habits=(S.habits||DEF_HAB).map(h=>({...h,done:false}));
-  S.dailyChecklist=(S.dailyChecklist||DEF_CHK).map(c=>({...c,done:false}));
+  S.habits=(S.habits||DEF_HAB).map(function(h){var r=Object.assign({},h);r.done=false;return r;});
+  S.dailyChecklist=(S.dailyChecklist||DEF_CHK).map(function(c){var r=Object.assign({},c);r.done=false;return r;});
   S.lastReset=TODAY_K;sv();
 }
 
@@ -1170,8 +1170,8 @@ function updStreak(){
   document.getElementById('strSub').textContent=S.streak>=7?'¡Una semana completa! ¡Campeona! 🏆':S.streak>=3?'¡Vas muy bien! 💜':'¡Completa el día para sumar!';
 }
 function checkDone(){
-  var all=[...S.tasks.morning,...S.tasks.afternoon,...S.tasks.evening];
-  var sc=all.filter(t=>t.stars>0);return sc.length>0&&sc.every(t=>t.done);
+  var all=(S.tasks.morning||[]).concat(S.tasks.afternoon||[]).concat(S.tasks.evening||[]);
+  var sc=all.filter(function(t){return t.stars>0;});return sc.length>0&&sc.every(function(t){return t.done;});
 }
 function handleDone(){
   if(S.lastCompleted===TODAY_K)return;
@@ -1182,8 +1182,8 @@ function handleDone(){
   if(S.streak%5===0){S.shields=(S.shields||0)+1;sv();cel('🛡️','¡ESCUDO DE RACHA!',`¡${S.streak} días! Ganaste un protector.`,3,15);}
   else cel('🏆','¡DÍA COMPLETO!','¡Todas las tareas de hoy! 🎉',3,15);
   sv();updStreak();renderWG('weekGrid');renderWG('statsWG');
-  var all=[...S.tasks.morning,...S.tasks.afternoon,...S.tasks.evening];
-  var sc=all.filter(t=>t.stars>0);
+  var all=(S.tasks.morning||[]).concat(S.tasks.afternoon||[]).concat(S.tasks.evening||[]);
+  var sc=all.filter(function(t){return t.stars>0;});
   S.tasksLog[TODAY_K]={done:sc.filter(t=>t.done).length,total:sc.length};sv();
 }
 function useShield(){
@@ -1245,24 +1245,44 @@ function toggleTask(time,id,dk){
     if(!S.dayArchive[dk]){var d=new Date(dk);var vw=d.getDay()===0||d.getDay()===6;S.dayArchive[dk]=JSON.parse(JSON.stringify(vw?WE:WD));}
     tasks=S.dayArchive[dk];
   }
-  var arr=tasks[time];var t=arr.find(x=>x.id===id);if(!t)return;
+  var arr=tasks[time];var t=arr.find(function(x){return x.id===id;});if(!t)return;
   t.done=!t.done;
   if(t.done){
-    if(t.stars>0)addStars(t.stars);if(t.xp>0)addXP(t.xp);
+    if(t.stars>0)addStars(t.stars);
+    if(t.xp>0)addXP(t.xp);
     var ms=['¡GENIAL!','¡LO LOGRASTE!','¡INCREÍBLE!','¡MUY BIEN!','¡ASÍ SE HACE!'];
     cel(['🌟','💫','✨','🎯','🏆'][Math.floor(Math.random()*5)],ms[Math.floor(Math.random()*5)],t.name+(isPast?' (retroactivo)':''),t.stars,t.xp);
-  }else{S.stars=Math.max(0,(S.stars||0)-t.stars);S.starsLog[TODAY_K]=Math.max(0,(S.starsLog[TODAY_K]||0)-t.stars);sv();updStars();}
-  sv();renderViewTasks();updProg();
+  } else {
+    // Restar estrellas
+    if(t.stars>0){
+      S.stars=Math.max(0,(S.stars||0)-t.stars);
+      S.starsLog[TODAY_K]=Math.max(0,(S.starsLog[TODAY_K]||0)-t.stars);
+    }
+    // Restar XP
+    if(t.xp>0){
+      S.xp=Math.max(0,(S.xp||0)-t.xp);
+    }
+    sv();updStars();updXP();
+  }
+  sv();renderViewTasks();updProg();updScreenTime();
   if(dk===TODAY_K&&checkDone())handleDone();
 }
 function updProg(){
   var tasks=getViewTasks();
-  var all=[...tasks.morning,...tasks.afternoon,...tasks.evening];
-  var sc=all.filter(t=>t.stars>0);var done=sc.filter(t=>t.done).length;
-  var p=sc.length>0?Math.round((done/sc.length)*100):0;
-  document.getElementById('pf').style.width=p+'%';
-  document.getElementById('plbl').textContent=`${done} de ${sc.length} tareas${viewKey!==TODAY_K?' ('+DAYS_ES[viewDate.getDay()]+')':''}`;
-  S.tasksLog[TODAY_K]={done:sc.length>0?[...S.tasks.morning,...S.tasks.afternoon,...S.tasks.evening].filter(t=>t.stars>0&&t.done).length:0,total:sc.length};sv();
+  var all=(tasks.morning||[]).concat(tasks.afternoon||[]).concat(tasks.evening||[]);
+  var sc=all.filter(function(t){return t.stars>0;});
+  var done=sc.filter(function(t){return t.done;}).length;
+  var total=sc.length;
+  var p=total>0?Math.round((done/total)*100):0;
+  var pf=document.getElementById('pf');if(pf)pf.style.width=p+'%';
+  var plbl=document.getElementById('plbl');
+  if(plbl)plbl.textContent=done+' de '+total+' tareas'+(viewKey!==TODAY_K?' ('+DAYS_ES[viewDate.getDay()]+')':'');
+  // Log today's real tasks (not viewed day)
+  var todayAll=(S.tasks.morning||[]).concat(S.tasks.afternoon||[]).concat(S.tasks.evening||[]);
+  var todaySc=todayAll.filter(function(t){return t.stars>0;});
+  var todayDone=todaySc.filter(function(t){return t.done;}).length;
+  S.tasksLog[TODAY_K]={done:todayDone,total:todaySc.length};
+  sv();
 }
 
 // ========================================
@@ -1826,7 +1846,7 @@ function renderStats(){
   document.getElementById('dDaysDone').textContent=Object.values(S.weekLog).filter(v=>v==='done').length;
   var keys=[];for(var i=6;i>=0;i--){var d=new Date(NOW);d.setDate(NOW.getDate()-i);keys.push(d.toISOString().split('T')[0]);}
   var dl=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-  var sv2=keys.map(k=>S.starsLog[k]||0);var maxS=Math.max(...sv2,1);
+  var sv2=keys.map(function(k){return S.starsLog[k]||0;});var maxS=Math.max.apply(null,sv2.concat([1]));
   document.getElementById('starsChart').innerHTML=keys.map((k,i)=>{var v=sv2[i];var h=Math.round((v/maxS)*60)+2;var d=new Date(k);return`<div class="bar-col"><div class="bar-val">${v||''}</div><div class="bar sb" style="height:${h}px"></div><div class="bar-lbl">${dl[d.getDay()]}</div></div>`;}).join('');
   var tv=keys.map(k=>{var l=S.tasksLog[k];return l&&l.total>0?Math.round((l.done/l.total)*100):0;});
   document.getElementById('tasksChart').innerHTML=keys.map((k,i)=>{var v=tv[i];var h=Math.round((v/100)*60)+2;var d=new Date(k);return`<div class="bar-col"><div class="bar-val" style="color:#A855F7;">${v?v+'%':''}</div><div class="bar tb" style="height:${h}px"></div><div class="bar-lbl">${dl[d.getDay()]}</div></div>`;}).join('');
