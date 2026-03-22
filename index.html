@@ -381,15 +381,42 @@ main{padding:10px;max-width:480px;margin:0 auto;position:relative;z-index:1;}
     🌟 Soy Vicky
   </button>
 
-  <button onclick="loginAs('mama')" style="
+  <!-- Mama button — shows inline PIN on click -->
+  <button onclick="showMamaPin()" id="mamaBtn" style="
     width:100%;max-width:280px;padding:18px;
     background:rgba(255,255,255,.07);
     border:1px solid rgba(168,85,247,.3);border-radius:14px;cursor:pointer;
     font-family:'Orbitron',monospace;font-size:16px;color:#C4B5FD;
-    letter-spacing:.5px;transition:transform .2s;
-  " onmouseover="this.style.style='transform:scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+    letter-spacing:.5px;transition:all .2s;
+  ">
     💜 Soy Mamá
   </button>
+
+  <!-- Inline PIN for Mama — appears below the button -->
+  <div id="mamaPinBox" style="display:none;width:100%;max-width:280px;margin-top:12px;background:rgba(255,255,255,.05);border:1px solid rgba(168,85,247,.3);border-radius:12px;padding:16px;text-align:center;">
+    <div style="font-family:'Orbitron',monospace;font-size:10px;color:#C4B5FD;margin-bottom:10px;letter-spacing:.5px;">INGRESA EL PIN</div>
+    <div style="display:flex;justify-content:center;gap:10px;margin-bottom:12px;" id="mamaPinDots">
+      <div style="width:13px;height:13px;border-radius:50%;border:2px solid #444;background:transparent;transition:all .2s;" id="mpd0"></div>
+      <div style="width:13px;height:13px;border-radius:50%;border:2px solid #444;background:transparent;transition:all .2s;" id="mpd1"></div>
+      <div style="width:13px;height:13px;border-radius:50%;border:2px solid #444;background:transparent;transition:all .2s;" id="mpd2"></div>
+      <div style="width:13px;height:13px;border-radius:50%;border:2px solid #444;background:transparent;transition:all .2s;" id="mpd3"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:8px;">
+      <button onclick="mpKey('1')" style="padding:12px;background:rgba(255,255,255,.07);border:1px solid #333;border-radius:8px;font-family:'Orbitron',monospace;font-size:16px;color:white;cursor:pointer;">1</button>
+      <button onclick="mpKey('2')" style="padding:12px;background:rgba(255,255,255,.07);border:1px solid #333;border-radius:8px;font-family:'Orbitron',monospace;font-size:16px;color:white;cursor:pointer;">2</button>
+      <button onclick="mpKey('3')" style="padding:12px;background:rgba(255,255,255,.07);border:1px solid #333;border-radius:8px;font-family:'Orbitron',monospace;font-size:16px;color:white;cursor:pointer;">3</button>
+      <button onclick="mpKey('4')" style="padding:12px;background:rgba(255,255,255,.07);border:1px solid #333;border-radius:8px;font-family:'Orbitron',monospace;font-size:16px;color:white;cursor:pointer;">4</button>
+      <button onclick="mpKey('5')" style="padding:12px;background:rgba(255,255,255,.07);border:1px solid #333;border-radius:8px;font-family:'Orbitron',monospace;font-size:16px;color:white;cursor:pointer;">5</button>
+      <button onclick="mpKey('6')" style="padding:12px;background:rgba(255,255,255,.07);border:1px solid #333;border-radius:8px;font-family:'Orbitron',monospace;font-size:16px;color:white;cursor:pointer;">6</button>
+      <button onclick="mpKey('7')" style="padding:12px;background:rgba(255,255,255,.07);border:1px solid #333;border-radius:8px;font-family:'Orbitron',monospace;font-size:16px;color:white;cursor:pointer;">7</button>
+      <button onclick="mpKey('8')" style="padding:12px;background:rgba(255,255,255,.07);border:1px solid #333;border-radius:8px;font-family:'Orbitron',monospace;font-size:16px;color:white;cursor:pointer;">8</button>
+      <button onclick="mpKey('9')" style="padding:12px;background:rgba(255,255,255,.07);border:1px solid #333;border-radius:8px;font-family:'Orbitron',monospace;font-size:16px;color:white;cursor:pointer;">9</button>
+      <button onclick="mpKey('del')" style="padding:12px;background:rgba(255,255,255,.04);border:1px solid #333;border-radius:8px;font-family:'Orbitron',monospace;font-size:14px;color:#888;cursor:pointer;">⌫</button>
+      <button onclick="mpKey('0')" style="padding:12px;background:rgba(255,255,255,.07);border:1px solid #333;border-radius:8px;font-family:'Orbitron',monospace;font-size:16px;color:white;cursor:pointer;">0</button>
+      <button onclick="hideMamaPin()" style="padding:12px;background:rgba(255,255,255,.04);border:1px solid #333;border-radius:8px;font-family:'Orbitron',monospace;font-size:12px;color:#888;cursor:pointer;">✕</button>
+    </div>
+    <div style="font-size:10px;color:#FF6B6B;font-family:'Rajdhani',sans-serif;min-height:14px;" id="mamaPinErr"></div>
+  </div>
 
   <div id="loginStatus" style="margin-top:16px;font-size:11px;color:#6666AA;font-family:'Rajdhani',sans-serif;min-height:16px;"></div>
 </div>
@@ -2047,17 +2074,57 @@ function scheduleFbSync(){
   },1500);
 }
 
+// -- MAMA DEDICATED PIN (completely separate from admin pin) --
+var mpBuf='';
+function showMamaPin(){
+  mpBuf='';
+  updMpDots();
+  var pb=document.getElementById('mamaPinBox'); if(pb) pb.style.display='block';
+  var mb=document.getElementById('mamaBtn'); if(mb) mb.style.display='none';
+  var me=document.getElementById('mamaPinErr'); if(me) me.textContent='';
+}
+function hideMamaPin(){
+  mpBuf='';
+  var pb=document.getElementById('mamaPinBox'); if(pb) pb.style.display='none';
+  var mb=document.getElementById('mamaBtn'); if(mb) mb.style.display='block';
+}
+function updMpDots(){
+  for(var i=0;i<4;i++){
+    var d=document.getElementById('mpd'+i);
+    if(d){
+      d.style.background=i<mpBuf.length?'#A855F7':'transparent';
+      d.style.borderColor=i<mpBuf.length?'#A855F7':'#444';
+      if(i<mpBuf.length) d.style.boxShadow='0 0 7px rgba(168,85,247,.5)';
+      else d.style.boxShadow='none';
+    }
+  }
+}
+function mpKey(k){
+  if(k==='del'){mpBuf=mpBuf.slice(0,-1);updMpDots();return;}
+  if(mpBuf.length>=4) return;
+  mpBuf+=k; updMpDots();
+  if(mpBuf.length===4){
+    if(mpBuf==='2601'){
+      hideMamaPin();
+      S.adminUnlocked=true;
+      loadAndShowMama();
+    } else {
+      var me=document.getElementById('mamaPinErr'); if(me) me.textContent='PIN incorrecto';
+      setTimeout(function(){
+        mpBuf=''; updMpDots();
+        var me=document.getElementById('mamaPinErr'); if(me) me.textContent='';
+      },700);
+    }
+  }
+}
+
 function loginAs(who){
   currentUser=who;
   if(who==='vicky'){
     var ls=document.getElementById('loginStatus'); if(ls) ls.textContent='Cargando...';
     loadAndShowVicky();
-  } else {
-    pinBuf=''; pinAction='mama_login';
-    var pe=document.getElementById('pinErr'); if(pe) pe.textContent='';
-    updPinDots();
-    var pm=document.getElementById('pinModal'); if(pm) pm.classList.add('open');
   }
+  // mama is handled by showMamaPin() / mpKey() flow
 }
 
 function loadAndShowVicky(){
