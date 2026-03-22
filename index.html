@@ -310,7 +310,7 @@ main{padding:10px;max-width:480px;margin:0 auto;position:relative;z-index:1;}
 .mood-note-h{font-size:7px;color:rgba(168,85,247,.6);text-align:center;max-width:36px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
 
 /* MODALS */
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:500;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px);}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:10000;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px);}
 .modal-bg.open{display:flex;animation:fi .2s ease;}
 .modal{background:var(--c1);border:1px solid var(--br);border-radius:14px 14px 0 0;padding:18px;width:100%;max-width:480px;max-height:80vh;overflow-y:auto;}
 .modal h3{font-family:'Orbitron',monospace;font-size:12px;color:#A855F7;margin-bottom:12px;letter-spacing:.4px;}
@@ -323,7 +323,7 @@ main{padding:10px;max-width:480px;margin:0 auto;position:relative;z-index:1;}
 .mbtn-del{background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.28);color:#FF6B6B;border-radius:7px;padding:9px 14px;font-family:'Orbitron',monospace;font-size:10px;cursor:pointer;}
 .mbtn-cancel{background:var(--c2);border:1px solid var(--br);color:var(--mu);border-radius:7px;padding:9px 14px;font-family:'Rajdhani',sans-serif;font-size:11px;cursor:pointer;}
 
-.pin-modal{position:fixed;inset:0;background:rgba(0,0,0,.87);z-index:600;display:none;align-items:center;justify-content:center;backdrop-filter:blur(8px);}
+.pin-modal{position:fixed;inset:0;background:rgba(0,0,0,.87);z-index:10000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(8px);}
 .pin-modal.open{display:flex;animation:fi .2s ease;}
 .pin-box{background:var(--c1);border:1px solid rgba(168,85,247,.35);border-radius:14px;padding:22px;width:260px;text-align:center;}
 .pin-box h3{font-family:'Orbitron',monospace;font-size:12px;color:#A855F7;margin-bottom:4px;}
@@ -1444,6 +1444,7 @@ var curP=null, mAns=0, mRes=[null,null,null,null,null];
 var curMathTab='practica', curTable=2;
 var tblP=null, tblRes=[null,null,null,null,null], tblAns=0;
 var wrongPQueue=[], wrongPIdx=0;
+var tblAnswered={};  // {table: {multiplier: true}}
 
 function updMathLevelBar(){
   var lvi=(S.mathStats.mathLevel||1)-1;
@@ -1529,10 +1530,15 @@ function mathTab(tab,el){
 }
 function selectTable(n){
   curTable=n;
+  if(n!==0 && !tblAnswered[n]) tblAnswered[n]={};
   var btns=document.querySelectorAll('.tbl-btn');
   for(var i=0;i<btns.length;i++) btns[i].classList.remove('active');
   var tb=document.getElementById('tbl-'+(n||0)); if(tb) tb.classList.add('active');
   var ttl=document.getElementById('tblTitle'); if(ttl) ttl.textContent=n===0?'MIX TODAS LAS TABLAS':'TABLA DEL '+n;
+  // Show practice card
+  var pc=document.getElementById('tblPracticeCard'); if(pc) pc.style.display='block';
+  var sc=document.getElementById('tblStatsCard'); if(sc) sc.style.display='block';
+  tblRes=[null,null,null,null,null]; tblAns=0;
   renderTableRef(n); genTableProb();
 }
 function renderTableRef(n){
@@ -1540,10 +1546,23 @@ function renderTableRef(n){
   if(n===0){ref.style.display='none';return;}
   ref.style.display='block';
   var t=document.getElementById('tableRefTitle'); if(t) t.textContent='TABLA DEL '+n;
+  var answered=tblAnswered[n]||{};
+  var count=0;for(var k in answered) count++;
+  var prog=document.getElementById('tableProgress'); if(prog) prog.textContent=count+'/10 respondidas';
   var g=document.getElementById('tableRefGrid'); if(!g) return;
   var html='';
-  for(var i=1;i<=10;i++) html+='<div style="background:rgba(255,107,107,.06);border-radius:5px;padding:5px 7px;font-family:\'Exo 2\',sans-serif;font-size:11px;color:rgba(255,255,255,.7);">'+n+' × '+i+' = <span style="color:#FFD93D;font-family:\'Orbitron\',monospace;font-weight:700;">'+(n*i)+'</span></div>';
+  for(var i=1;i<=10;i++){
+    var isAns=!!answered[i];
+    html+='<div style="background:'+(isAns?'rgba(34,197,94,.12)':'rgba(255,107,107,.04)')+';border:1px solid '+(isAns?'rgba(34,197,94,.2)':'rgba(255,107,107,.1)')+';border-radius:5px;padding:5px 7px;font-family:\'Exo 2\',sans-serif;font-size:11px;color:rgba(255,255,255,.7);">'+
+      n+' × '+i+' = <span style="color:'+(isAns?'#22C55E':'rgba(255,255,255,.2)')+';font-family:\'Orbitron\',monospace;font-weight:700;">'+(isAns?n*i:'?')+'</span></div>';
+  }
   g.innerHTML=html;
+  var banner=document.getElementById('tableCompleteBanner'); if(banner) banner.style.display=count>=10?'block':'none';
+  if(count>=10){
+    var sc=document.getElementById('tblStatsCard'); if(sc) sc.style.display='block';
+    var mins=(S.mathStats.tblCorrect||0)*2;
+    var tm=document.getElementById('tblMinsEarned'); if(tm) tm.textContent=mins+' min ganados';
+  }
 }
 function genTableProb(){
   var n=curTable===0?Math.floor(Math.random()*9)+2:curTable;
@@ -1571,6 +1590,15 @@ function checkTable(){
     tblRes[tblAns%5]=true; tblAns++;
     if(fb) fb.textContent=['Correcto! 🔥','Asi se hace! 💪','Campeona! 🏆','Exacto! ⭐','Brutal! 🚀'][Math.floor(Math.random()*5)];
     addStars(1); addXP(6);
+    // Reveal this answer in the table grid
+    if(tblP.n && curTable!==0){
+      if(!tblAnswered[tblP.n]) tblAnswered[tblP.n]={};
+      tblAnswered[tblP.n][tblP.b]=true;
+      renderTableRef(tblP.n);
+      // Check if table complete
+      var count=0;for(var k in tblAnswered[tblP.n]) count++;
+      if(count>=10) cel('🏆','TABLA COMPLETADA!','Dominaste la tabla del '+tblP.n+'! +20 min pantalla!',5,20);
+    }
     if(S.mathStats.tblStreak%5===0) cel('🔥','5 TABLAS SEGUIDAS!','Dominas las tablas!',3,12);
     var tc=document.getElementById('tblCorrect'); if(tc) tc.textContent=S.mathStats.tblCorrect;
   } else {
@@ -1599,8 +1627,9 @@ function renderWrongList(){
   var html='';
   for(var i=0;i<sorted.length;i++){
     var w=sorted[i];
+    // Show question but NOT the answer - no spoilers!
     html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 9px;background:rgba(168,85,247,.05);border:1px solid var(--br);border-radius:7px;margin-bottom:4px;">'+
-      '<div style="font-family:\'Orbitron\',monospace;font-size:13px;color:var(--tx);">'+w.q+' = <span style="color:#FFD93D;">'+w.ans+'</span></div>'+
+      '<div style="font-family:\'Orbitron\',monospace;font-size:13px;color:var(--tx);">'+w.q+' = <span style="color:var(--mu);">???</span></div>'+
       '<div style="font-size:9px;color:var(--co);font-family:\'Rajdhani\',sans-serif;background:rgba(255,107,107,.1);border-radius:4px;padding:2px 7px;">'+w.count+'x fallada</div>'+
       '</div>';
   }
@@ -1616,12 +1645,32 @@ function practiceWrong(){
   var btn=document.getElementById('btnPracticeWrong'); if(btn) btn.style.display='none';
   nextWrongProb();
 }
+var MATH_TIPS={
+  'a': ['Suma en tu cabeza de 10 en 10 primero.','Cuenta con los dedos si necesitas.','Empieza por el numero mas grande.'],
+  's': ['Resta contando hacia atras.','Piensa: cuanto le falta al numero pequeno para llegar al grande?','Si restas 9, resta 10 y suma 1.'],
+  'm23': ['La tabla del 2 es contar de 2 en 2.','La tabla del 3: suma 3 cada vez.','Usa los nudillos para recordar.'],
+  'm45': ['La tabla del 4: duplica y vuelve a duplicar (4=2x2).','La tabla del 5 siempre termina en 0 o 5.'],
+  'x': ['Repite la tabla en voz alta varias veces.','Escribe la tabla completa antes de practicar.','Asocia el resultado con algo que recuerdes.']
+};
+function getWrongTip(q){
+  if(q.indexOf('+')!==-1) return MATH_TIPS['a'][Math.floor(Math.random()*MATH_TIPS['a'].length)];
+  if(q.indexOf('-')!==-1) return MATH_TIPS['s'][Math.floor(Math.random()*MATH_TIPS['s'].length)];
+  if(q.indexOf('x')!==-1){
+    var parts=q.split(' x ');
+    var n=parseInt(parts[0]);
+    if(n===2||n===3) return MATH_TIPS['m23'][Math.floor(Math.random()*MATH_TIPS['m23'].length)];
+    if(n===4||n===5) return MATH_TIPS['m45'][Math.floor(Math.random()*MATH_TIPS['m45'].length)];
+    return 'Repite '+q.replace('= ?','')+' varias veces en voz alta.';
+  }
+  return 'Tomatelo con calma. Cada error es aprendizaje. 💜';
+}
 function nextWrongProb(){
   if(wrongPIdx>=wrongPQueue.length) wrongPIdx=0;
   var w=wrongPQueue[wrongPIdx];
   var pe=document.getElementById('wrongProb'); if(pe) pe.textContent=w.q+' = ?';
   var ie=document.getElementById('wrongInput'); if(ie) ie.value='';
   var fe=document.getElementById('wrongFb'); if(fe) fe.textContent='';
+  var wt=document.getElementById('wrongTip'); if(wt) wt.textContent='💡 Truco: '+getWrongTip(w.q);
   var pp=document.getElementById('wrongPracticePanel');
   if(pp){pp._curAns=w.ans;pp._curQ=w.q;}
 }
